@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import help_funcs as hf
+from numpy import linalg as LA
 from scipy.cluster import vq
 
-#from pyradar.utils import take_snapshot
+
+# from pyradar.utils import take_snapshot
 
 
 def initialize_parameters(parameters=None):
@@ -36,12 +39,12 @@ def initialize_parameters(parameters=None):
     THETA_C = safe_pull_value(parameters, 'THETA_C', 20)
 
     # percentage of change in clusters between each iteration
-    #(to stop algorithm)
+    # (to stop algorithm)
     THETA_O = 0.05
 
-    #can use any of both fixed or random
+    # can use any of both fixed or random
     # number of starting clusters
-    #k = np.random.randint(1, K)
+    # k = np.random.randint(1, K)
     k = safe_pull_value(parameters, 'k', K)
 
     ret = locals()
@@ -103,12 +106,12 @@ def merge_clusters(img_class_flat, centers, clusters_list):
             to_add = np.append(to_add, value)
             to_delete = np.append(to_delete, [c1, c2])
 
-        #delete old clusters and their indices from the availables array
+        # delete old clusters and their indices from the availables array
         centers = np.delete(centers, to_delete)
         clusters_list = np.delete(clusters_list, to_delete)
 
-        #generate new indices for the new clusters
-        #starting from the max index 'to_add.size' times
+        # generate new indices for the new clusters
+        # starting from the max index 'to_add.size' times
         start = int(clusters_list.max())
         end = to_add.size + start
 
@@ -143,7 +146,7 @@ def compute_pairwise_distances(centers):
                 d = np.abs(centers[i] - centers[j])
                 pair_dists.append((d, (i, j)))
 
-    #return it sorted on the first elem
+    # return it sorted on the first elem
     return sorted(pair_dists)
 
 
@@ -289,12 +292,12 @@ def update_clusters(img_flat, img_class_flat, centers, clusters_list):
 
     for cluster in range(0, k):
         indices = np.where(img_class_flat == clusters_list[cluster])[0]
-        #get whole cluster
+        # get whole cluster
         cluster_values = img_flat[indices]
-        #sum and count the values
+        # sum and count the values
         sum_per_cluster = cluster_values.sum()
         total_per_cluster = (cluster_values.size) + 1
-        #compute the new center of the cluster
+        # compute the new center of the cluster
         new_cluster = sum_per_cluster / total_per_cluster
 
         new_centers = np.append(new_centers, new_cluster)
@@ -309,24 +312,60 @@ def update_clusters(img_flat, img_class_flat, centers, clusters_list):
     return new_centers, new_clusters_list
 
 
-def initial_clusters(img_flat, k, method="linspace"):
+def initial_clusters(X, k, method="simple"):
     """
     Define initial clusters centers as startup.
     By default, the method is "linspace". Other method available is "random".
+    :param X: numpy array of feature vectors
     """
-    methods_availables = ["linspace", "random"]
+    methods_available = ["simple", "sieving", "maxmin"]
 
-    assert method in methods_availables, "ERROR: method %s is no valid." \
-                                         "Methods availables %s" \
-                                         % (method, methods_availables)
-    if method == "linspace":
-        max, min = img_flat.max(), img_flat.min()
-        centers = np.linspace(min, max, k)
-    elif method == "random":
-        start, end = 0, img_flat.size
-        indices = np.random.randint(start, end, k)
-        centers = img_flat.take(indices)
+    assert method in methods_available, "ERROR: method %s is no valid." \
+                                        "Methods available: %s" \
+                                        % (method, methods_available)
+    assert X.ndim == 2, f"ERROR: array X of feature vectors has wrong dims: {X.ndim}\n" \
+                        "X should be of shape == ( N (vector count), M (vec size) )"
 
+    print(f"Given {X.shape[0]} objects with {X.shape[1]} features")
+
+    if method == "simple":
+        # choose init center
+        rand_cent_index = np.random.randint(X.shape[0])
+        centers = np.empty((k, *X[0].shape))
+        centers = np.append(centers, X[rand_cent_index])
+
+        # choose init constant h
+        pairwise_dist_raw = [x - y for x in X for y in X]
+        pairwise_dist = np.fromiter(map(lambda d: LA.norm(d), pairwise_dist_raw),
+                                    dtype='int16')
+        pairwise_dist_max_ind = hf.k_max(pairwise_dist, k - 1)
+        pairwise_dist_max = pairwise_dist[pairwise_dist_max_ind]
+        h = pairwise_dist_max[0] - 1
+
+        # choose rest of k-1 centers
+        for i in range(1, k):
+            print(f"Finding {i}-th center...")
+            for x in X:
+                x_min_dist = None
+                min_dist = np.inf
+                for center in centers:
+                    dist = LA.norm(x - center)
+                    if dist < min_dist:
+                        x_min_dist = x
+                        min_dist = dist
+                if min_dist > h:
+                    print(f"New center: {x_min_dist}")
+                    centers = np.append(centers, x_min_dist)
+                    break
+    # elif method == "linspace":
+    #     max, min = X.max(), X.min()
+    #     centers = np.linspace(min, max, k)
+    # elif method == "random":
+    #     start, end = 0, X.size
+    #     indices = np.random.randint(start, end, k)
+    #     centers = X.take(indices)
+
+    print(f"Generated {k} centers: {centers}")
     return centers
 
 
@@ -348,11 +387,11 @@ def sort_arrays_by_first(centers, clusters_list):
     return sorted_centers, sorted_clusters_list
 
 
-def isodata_classification(img, parameters=None):
+def isodata_classification(X, parameters=None):
     """
-    Classify a numpy 'img' using Isodata algorithm.
+    Classify a numpy array X of objects (arrays of features) x using Isodata algorithm.
     Parameters: a dictionary with the following keys.
-            - img: an input numpy array that contains the image to classify.
+            - X: an input array of arrays of features.
             - parameters: a dictionary with the initial values.
               If 'parameters' are not specified, the algorithm uses the default
               ones.
@@ -378,28 +417,27 @@ def isodata_classification(img, parameters=None):
     global K, I, P, THETA_M, THETA_S, THEHTA_C, THETA_O, k
     initialize_parameters(parameters)
 
-    N, M, D = img.shape  # for reshaping at the end
-    img_flat = img.flatten()
-    clusters_list = np.arange(k)  # number of clusters availables
+
+    clusters_list = np.arange(k)  # number of clusters available
 
     print((f"Isodata(info): Starting algorithm with {k} classes", k))
-    centers = initial_clusters(img_flat, k, "linspace")
+    centers = initial_clusters(X, k, "simple")
 
     for iter in range(0, I):
         #        print "Isodata(info): Iteration:%s Num Clusters:%s" % (iter, k)
         last_centers = centers.copy()
         # assing each of the samples to the closest cluster center
-        img_class_flat, dists = vq.vq(img_flat, centers)
+        img_class_flat, dists = vq.vq(X, centers)
 
         centers, clusters_list = discard_clusters(img_class_flat,
                                                   centers, clusters_list)
-        centers, clusters_list = update_clusters(img_flat,
+        centers, clusters_list = update_clusters(X,
                                                  img_class_flat,
                                                  centers, clusters_list)
         k = centers.size
 
         if k <= (K / 2.0):  # too few clusters => split clusters
-            centers, clusters_list = split_clusters(img_flat, img_class_flat,
+            centers, clusters_list = split_clusters(X, img_class_flat,
                                                     centers, clusters_list)
 
         elif k > (K * 2.0):  # too many clusters => merge clusters
@@ -416,7 +454,6 @@ def isodata_classification(img, parameters=None):
     #        take_snapshot(img_class_flat.reshape(N, M), iteration_step=iter)
     ###############################################################################
     print((f"Isodata(info): Finished with {k} classes", k))
-    print(f"Isodata(info): Number of Iterations: {iter+1}")
+    print(f"Isodata(info): Number of Iterations: {iter + 1}")
 
-    return img_class_flat.reshape(N, M, D)
-
+    return img_class_flat.reshape(N, M)

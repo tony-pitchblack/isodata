@@ -17,7 +17,7 @@ def img_to_ndarray(pil_img):
     """
     Converts PIL image to numpy array
     :param img: grayscale or RGB image
-    :return: ndarray pixel_array if valid image was provided,
+    :return: ndarray pixel_array, size of image NxM, type of img depth if valid image was provided,
     otherwise returns -1. Let pixel count k = n * m
     if image is grayscale, then pixel_array.shape == (k, 1)
     if image is RGB, then pixel_array.shape == (k, 3)

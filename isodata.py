@@ -426,8 +426,10 @@ def isodata_classification(X, parameters=None):
     for iter in range(0, I):
         #        print "Isodata(info): Iteration:%s Num Clusters:%s" % (iter, k)
         last_centers = centers.copy()
+
         # assing each of the samples to the closest cluster center
-        img_class_flat, dists = vq.vq(X, centers)
+
+        img_class_flat, dists = vq.vq(X, centers) # ВООБЩЕ не понятно, что делает эта строка
 
         centers, clusters_list = discard_clusters(img_class_flat,
                                                   centers, clusters_list)

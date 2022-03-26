@@ -390,7 +390,7 @@ def isodata_classification(X, parameters=None):
 
     clusters_list = np.arange(k)  # number of clusters available
 
-    print((f"Isodata(info): Starting algorithm with {k} classes", k))
+    print(f"Isodata(info): Starting algorithm with {k} classes", k)
     centers = initial_clusters(X, k, "random")
 
     for iter in range(0, I):

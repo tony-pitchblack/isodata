@@ -350,7 +350,7 @@ def sort_arrays_by_first(centers, clusters_list):
         "ERROR: sort_arrays_by_first centers and clusters_list size are not equal"
 
     indices = np.argsort(centers)
-
+    #test comment
     sorted_centers = centers[indices]
     sorted_clusters_list = clusters_list[indices]
 

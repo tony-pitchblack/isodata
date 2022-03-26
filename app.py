@@ -12,7 +12,7 @@ if __name__ == '__main__':
     #     print(line)
 
     # houses_img = Image.open('data/img/houses_grayscale.jpg')
-    houses_img = Image.open('data/img/houses.jpg')
+    houses_img = Image.open('data/input/img/houses.jpg')
     houses_data, N, M, depth = img_to_ndarray(houses_img)
 
     K = 2

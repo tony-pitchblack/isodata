@@ -11,8 +11,8 @@ if __name__ == '__main__':
     # for line in iris_data:
     #     print(line)
 
-    houses_img = Image.open('data/img/houses_grayscale.jpg')
-    # houses_img = Image.open('data/img/houses.jpg')
+    # houses_img = Image.open('data/img/houses_grayscale.jpg')
+    houses_img = Image.open('data/img/houses.jpg')
     houses_data, N, M, depth = img_to_ndarray(houses_img)
 
     K = 2
@@ -25,6 +25,6 @@ if __name__ == '__main__':
     ax.set_title(f"Satellite house image pixel classes ({K})")
     fig.tight_layout()
     plt.show()
-    fig.savefig(f'data/img/houses_out_{K}_classes.jpg', bbox_inches='tight', dpi=500)
+    # fig.savefig(f'data/img/houses_out_{K}_classes.jpg', bbox_inches='tight', dpi=500)
 
     houses_img.close()

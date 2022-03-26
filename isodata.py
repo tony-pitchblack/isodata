@@ -312,60 +312,30 @@ def update_clusters(img_flat, img_class_flat, centers, clusters_list):
     return new_centers, new_clusters_list
 
 
-def initial_clusters(X, k, method="simple"):
+def initial_clusters(X, k, method="random"):
     """
     Define initial clusters centers as startup.
     By default, the method is "linspace". Other method available is "random".
     :param X: numpy array of feature vectors
     """
-    methods_available = ["simple", "sieving", "maxmin"]
-
+    methods_available = ["random"]
     assert method in methods_available, "ERROR: method %s is no valid." \
                                         "Methods available: %s" \
                                         % (method, methods_available)
+
+    # множество X должно быть массивом векторов признаков, то есть размерности 2
     assert X.ndim == 2, f"ERROR: array X of feature vectors has wrong dims: {X.ndim}\n" \
                         "X should be of shape == ( N (vector count), M (vec size) )"
 
     print(f"Given {X.shape[0]} objects with {X.shape[1]} features")
 
-    if method == "simple":
-        # choose init center
-        rand_cent_index = np.random.randint(X.shape[0])
-        centers = np.empty((k, *X[0].shape))
-        centers = np.append(centers, X[rand_cent_index])
+    if method == "random":
+        start, end = 0, X.shape[0]
+        indices = np.random.randint(start, end, k)
+        centers = X.take(indices, 0)
 
-        # choose init constant h
-        pairwise_dist_raw = [x - y for x in X for y in X]
-        pairwise_dist = np.fromiter(map(lambda d: LA.norm(d), pairwise_dist_raw),
-                                    dtype='int16')
-        pairwise_dist_max_ind = hf.k_max(pairwise_dist, k - 1)
-        pairwise_dist_max = pairwise_dist[pairwise_dist_max_ind]
-        h = pairwise_dist_max[0] - 1
+    print(f"Chosen initial {k} centers: {centers}")
 
-        # choose rest of k-1 centers
-        for i in range(1, k):
-            print(f"Finding {i}-th center...")
-            for x in X:
-                x_min_dist = None
-                min_dist = np.inf
-                for center in centers:
-                    dist = LA.norm(x - center)
-                    if dist < min_dist:
-                        x_min_dist = x
-                        min_dist = dist
-                if min_dist > h:
-                    print(f"New center: {x_min_dist}")
-                    centers = np.append(centers, x_min_dist)
-                    break
-    # elif method == "linspace":
-    #     max, min = X.max(), X.min()
-    #     centers = np.linspace(min, max, k)
-    # elif method == "random":
-    #     start, end = 0, X.size
-    #     indices = np.random.randint(start, end, k)
-    #     centers = X.take(indices)
-
-    print(f"Generated {k} centers: {centers}")
     return centers
 
 
@@ -421,7 +391,7 @@ def isodata_classification(X, parameters=None):
     clusters_list = np.arange(k)  # number of clusters available
 
     print((f"Isodata(info): Starting algorithm with {k} classes", k))
-    centers = initial_clusters(X, k, "simple")
+    centers = initial_clusters(X, k, "random")
 
     for iter in range(0, I):
         #        print "Isodata(info): Iteration:%s Num Clusters:%s" % (iter, k)
@@ -429,7 +399,7 @@ def isodata_classification(X, parameters=None):
 
         # assing each of the samples to the closest cluster center
 
-        img_class_flat, dists = vq.vq(X, centers) # ВООБЩЕ не понятно, что делает эта строка
+        img_class_flat, dists = vq.vq(X, centers) # ВООБЩЕ не понятно, как работает эта строка
 
         centers, clusters_list = discard_clusters(img_class_flat,
                                                   centers, clusters_list)

@@ -90,10 +90,8 @@ def merge_clusters(objects_classes, centers, clusters_list):
         to_delete = set()  # clusters to delete
 
         for cluster in range(0, k):
-            indices = np.where(objects_classes == clusters_list[cluster])[0]
+            indices = np.where(objects_classes == cluster)[0]
             count_per_cluster[cluster] = indices.size
-
-        # TODO: merge conflicts
 
         for c1, c2 in below_threshold:
             c1_count = float(count_per_cluster[c1]) + 1
@@ -104,10 +102,11 @@ def merge_clusters(objects_classes, centers, clusters_list):
 
             new_center = np.around(factor * (weight_c1 + weight_c2))
 
-            to_add.append(new_center)
-            to_delete.update([c1, c2])
+            if c1 not in to_delete and c2 not in to_delete:
+                to_add.append(new_center)
+                to_delete.update([c1, c2])
 
-        to_add = np.array(to_add)
+        to_add = np.array(to_add, dtype=centers.dtype)
         to_delete = np.array(list(to_delete))
 
         # delete old clusters and their indices from the availables array
@@ -116,7 +115,7 @@ def merge_clusters(objects_classes, centers, clusters_list):
 
         # generate new indices for the new clusters
         # starting from the max index 'to_add.size' times
-        start = int(clusters_list.max()) if clusters_list.size != 0 else 0
+        start = int(clusters_list.max()) + 1 if clusters_list.size != 0 else 0
         end = to_add.shape[0] + start
 
         centers = np.append(centers, to_add, 0)
@@ -154,33 +153,35 @@ def compute_pairwise_distances(centers):
     return sorted(pair_dists)
 
 
-def split_clusters(img_flat, img_class_flat, centers, clusters_list):
+def split_clusters(objects, objects_classes, centers, clusters_list):
     """
     Split clusters to form new clusters.
     """
-    assert centers.size == clusters_list.size, \
+    assert centers.shape[0] == clusters_list.size, \
         "ERROR: split() centers and clusters_list size are different"
 
     delta = 10
-    k = centers.size
+    k = centers.shape[0]
     count_per_cluster = np.zeros(k)
     stddev = np.array([])
 
-    avg_dists_to_clusters = compute_avg_distance(img_flat, img_class_flat,
+    avg_dists_to_clusters = compute_avg_distance(objects, objects_classes,
                                                  centers, clusters_list)
-    d = compute_overall_distance(img_class_flat, avg_dists_to_clusters,
+    d = compute_overall_distance(objects_classes, avg_dists_to_clusters,
                                  clusters_list)
 
     # compute all the standard deviation of the clusters
     for cluster in range(0, k):
-        indices = np.where(img_class_flat == clusters_list[cluster])[0]
-        count_per_cluster[cluster] = indices.size
-        value = ((img_flat[indices] - centers[cluster]) ** 2).sum()
+        indices = np.where(objects_classes == cluster)[0]
+        count_per_cluster[cluster] = indices.shape[0]
+        value = ((objects[indices] - centers[cluster]) ** 2).sum()
         value /= count_per_cluster[cluster]
         value = np.sqrt(value)
         stddev = np.append(stddev, value)
 
+    # cluster = stddev.argmax() if stddev.shape[0] == 0 else np.zeros_like(centers[0])
     cluster = stddev.argmax()
+
     max_stddev = stddev[cluster]
     max_clusters_list = int(clusters_list.max())
 
@@ -191,53 +192,53 @@ def split_clusters(img_flat, img_class_flat, centers, clusters_list):
                 new_cluster_1 = old_cluster + delta
                 new_cluster_2 = old_cluster - delta
 
-                centers = np.delete(centers, cluster)
-                clusters_list = np.delete(clusters_list, cluster)
+                centers = np.delete(centers, cluster, 0)
+                clusters_list = np.delete(clusters_list, cluster, 0)
 
-                centers = np.append(centers, [new_cluster_1, new_cluster_2])
+                centers = np.append(centers, [new_cluster_1, new_cluster_2], 0)
                 clusters_list = np.append(clusters_list, [max_clusters_list,
-                                                          (max_clusters_list + 1)])
+                                                          (max_clusters_list + 1)], 0)
 
                 centers, clusters_list = sort_arrays_by_first(centers,
                                                               clusters_list)
 
-                assert centers.size == clusters_list.size, \
+                assert centers.shape[0] == clusters_list.size, \
                     "ERROR: split() centers and clusters_list size are different"
 
     return centers, clusters_list
 
 
-def compute_overall_distance(img_class_flat, avg_dists_to_clusters,
+def compute_overall_distance(objects_classes, avg_dists_to_clusters,
                              clusters_list):
     """
     Computes the overall distance of the samples from their respective cluster
     centers.
     """
-    k = avg_dists_to_clusters.size
-    total = img_class_flat.size
+    k = avg_dists_to_clusters.shape[0]
+    total = objects_classes.shape[0]
     count_per_cluster = np.zeros(k)
 
     for cluster in range(0, k):
-        indices = np.where(img_class_flat == clusters_list[cluster])[0]
-        count_per_cluster[cluster] = indices.size
+        indices = np.where(objects_classes == cluster)[0]
+        count_per_cluster[cluster] = indices.shape[0]
 
     d = ((count_per_cluster / total) * avg_dists_to_clusters).sum()
 
     return d
 
 
-def compute_avg_distance(img_flat, img_class_flat, centers, clusters_list):
+def compute_avg_distance(objects, objects_classes, centers, clusters_list):
     """
     Computes all the average distances to the center in each cluster.
     """
-    k = centers.size
+    k = centers.shape[0]
     avg_dists_to_clusters = np.array([])
 
     for cluster in range(0, k):
-        indices = np.where(img_class_flat == clusters_list[cluster])[0]
+        indices = np.where(objects_classes == cluster)[0]
 
-        total_per_cluster = indices.size + 1
-        sum_per_cluster = (np.abs(img_flat[indices] - centers[cluster])).sum()
+        total_per_cluster = indices.shape[0] + 1
+        sum_per_cluster = (LA.norm(objects[indices] - centers[cluster])).sum()
 
         dj = (sum_per_cluster / float(total_per_cluster))
 
@@ -257,7 +258,7 @@ def discard_clusters(objects_clusters, centers, clusters_list):
         "ERROR: discard_cluster() centers and clusters_list size are different"
 
     for cluster in range(0, k):
-        indices = np.where(objects_clusters == clusters_list[cluster])[0]
+        indices = np.where(objects_clusters == cluster)[0]
         total_per_cluster = indices.size
         if total_per_cluster <= THETA_N:
             to_delete.append(cluster)
@@ -296,7 +297,7 @@ def update_clusters(objects, objects_classes, centers, clusters_list):
         "ERROR: update_clusters() centers and clusters_list size are different"
 
     for cluster in range(0, k):
-        indices = np.where(objects_classes == clusters_list[cluster])[0]
+        indices = np.where(objects_classes == cluster)[0]
         # get whole cluster
         cluster_values = objects[indices]
         # sum and count the values
@@ -403,22 +404,21 @@ def isodata_classification(objects, parameters=None):
     available_clusters = np.arange(k)  # number of clusters available
 
     print(f"Isodata(info): Starting algorithm with {k} classes")
-    centers = initial_clusters(objects, k, "preset", 1)
-    # centers = initial_clusters(objects, k, "random")
+    # centers = initial_clusters(objects, k, "preset", 1)
+    centers = initial_clusters(objects, k, "random")
 
     for iter_number in range(I):
         # print "Isodata(info): Iteration:%s Num Clusters:%s" % (iter_number, k)
         last_centers = centers.copy()
 
         # assigning each of the samples to the closest cluster center
-        objects_classes, dists = vq.vq(objects, centers)  # ВООБЩЕ не понятно, как работает эта строка
+        objects_classes, dists = vq.vq(objects, centers)
 
         centers, available_clusters = discard_clusters(objects_classes,
                                                        centers, available_clusters)
-        centers, available_clusters = update_clusters(objects,
-                                                      objects_classes,
+        centers, available_clusters = update_clusters(objects, objects_classes,
                                                       centers, available_clusters)
-        k = centers.size
+        k = centers.shape[0]
 
         if k <= (K / 2.0):  # too few clusters => split clusters
             centers, available_clusters = split_clusters(objects, objects_classes,
@@ -430,7 +430,7 @@ def isodata_classification(objects, parameters=None):
         else:  # nor split or merge are needed
             pass
 
-        k = centers.size
+        k = centers.shape[0]
         ###############################################################################
         if quit_low_change_in_clusters(centers, last_centers, iter_number):
             break
@@ -440,4 +440,4 @@ def isodata_classification(objects, parameters=None):
     print((f"Isodata(info): Finished with {k} classes"))
     print(f"Isodata(info): Number of Iterations: {iter_number + 1}")
 
-    return objects_classes
+    return objects_classes, k

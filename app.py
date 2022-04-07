@@ -14,23 +14,23 @@ if __name__ == '__main__':
     imgplot = plt.imshow(img)
 
     # clusterize using ISODATA algorithm
-    houses_data, N, M, depth = hf.img_to_ndarray(img)
+    img_flat, N, M, depth = hf.img_to_ndarray(img)
     params = {
         'K': 3,
-        'THETA_C': 100,
-        'THETA_N': 200000
+        # 'THETA_C': 100,
+        # 'THETA_N': 200000
     }
-    img_classes = isodata_classification(houses_data, params)
+    img_classes_flat, class_count = isodata_classification(img_flat, params)
+    img_classes = img_classes_flat.reshape(N, M)
 
     # show clusterized image
-
     fig, ax = plt.subplots()
     im = ax.imshow(img_classes)
 
     # save clusterized image
-    ax.set_title(f"Satellite house image pixel classes ({K})")
+    ax.set_title(f"Satellite house image pixel classes ({class_count})")
     fig.tight_layout()
     plt.show(block=True)
-    # fig.savefig(f'data/output/img/houses_out_{K}_classes.jpg', bbox_inches='tight', dpi=500)
+    fig.savefig(f"data/output/img/houses_out_{class_count}_classes.jpg", bbox_inches='tight', dpi=500)
 
     img.close()

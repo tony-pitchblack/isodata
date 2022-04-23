@@ -370,6 +370,17 @@ def sort_arrays_by_first(centers, clusters_list):
     return sorted_centers, sorted_clusters_list
 
 
+def accuracy_v2(y_to_test, y_true):
+    len1 = len(y_true)
+    count = 0
+    for i in range(len1):
+    if (y_true[i] == y_to_test[i]):
+        count+=1
+    accur = count/len1*100
+    print("Accuracy = {0:.2f}".format(accur))
+    
+    
+
 def isodata_classification(objects, parameters=None):
     """
     Classify a numpy array X of objects (arrays of features) x using Isodata algorithm.

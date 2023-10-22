@@ -36,5 +36,5 @@ def img_to_ndarray(pil_img):
     pixel_array = img.reshape(N*M, depth)
     return pixel_array, N, M, depth
 
-def arr_to_img(img_flat, N, M, depth):
-    return
+# def arr_to_img(img_flat, N, M, depth):
+#     return

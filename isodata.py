@@ -58,7 +58,6 @@ def quit_low_change_in_clusters(centers, last_centers, iter):
     iteration.
 
     :returns: True if should stop, otherwise False.
-
     """
     quit = False
     if centers.shape == last_centers.shape:
@@ -398,7 +397,7 @@ def isodata_classification(objects, parameters=None):
             - img_class: a numpy array with the classification.
     """
 
-    global K, I, P, THETA_N, THETA_S, THEHTA_C, THETA_O, k
+    global K, I, P, THETA_N, THETA_S, THETA_C, THETA_O, k
     initialize_parameters(parameters)
 
     available_clusters = np.arange(k)  # number of clusters available

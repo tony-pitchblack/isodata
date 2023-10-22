@@ -8,9 +8,9 @@ import matplotlib.image as mpimg
 if __name__ == '__main__':
     # load and show test image
 
-    # img = Image.open('data/input/img/houses_grayscale.jpg')
+    # img = Image.open('data/houses_sat_img/houses_grayscale.jpg')
     # imgplot = plt.imshow(img, cmap='gray', vmin=0, vmax=255)
-    img = Image.open('data/input/img/houses.jpg')
+    img = Image.open('data/houses_sat_img/houses.jpg')
     imgplot = plt.imshow(img)
 
     # clusterize using ISODATA algorithm
@@ -28,9 +28,7 @@ if __name__ == '__main__':
     im = ax.imshow(img_classes)
 
     # save clusterized image
-    ax.set_title(f"Satellite house image pixel classes ({class_count})")
-    fig.tight_layout()
-    plt.show(block=True)
-    fig.savefig(f"data/output/img/houses_out_{class_count}_classes.jpg", bbox_inches='tight', dpi=500)
-
-    img.close()
+    # ax.set_title(f"Satellite house image pixel classes ({class_count})")
+    # fig.tight_layout()
+    # plt.show(block=True)
+    # fig.savefig(f"data/output/img/houses_out_{class_count}_classes.jpg", bbox_inches='tight', dpi=500)
